@@ -38,14 +38,26 @@ async def predict(file: UploadFile = File(...)):
         buffer = io.BytesIO(file_content)
 
         predictions = predict_image(buffer)
+        publisher.publish(publish_topic_path, json.dumps(predictions).encode("utf-8"))
         return {"predictions": predictions}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing the image: {str(e)}")
 
-def callback(message: pubsub_v1.subscriber.message.Message):
+async def poll_pubsub():
+    while True:
+        try:
+            response = subscriber.pull(subscription=subscription_path, max_messages=10, timeout=10)
+            if response.received_messages:
+                for msg in response.received_messages:
+                    process_message(msg)
+        except Exception as e:
+            logger.error(f"Error polling Pub/Sub: {e}")
+        await asyncio.sleep(5)
+
+def process_message(message):
     try:
-        data = json.loads(message.data.decode("utf-8"))
+        data = json.loads(message.message.data.decode("utf-8"))
         image_data = base64.b64decode(data['image'])
         timestamp = data['timestamp']
 
@@ -55,7 +67,7 @@ def callback(message: pubsub_v1.subscriber.message.Message):
         predictions = predict_image(image_stream)
 
         result = {
-            "id_process": message.message_id,
+            "id_process": message.message.message_id,
             "result": predictions,
             "timestamp": timestamp
         }
@@ -63,18 +75,12 @@ def callback(message: pubsub_v1.subscriber.message.Message):
         publisher.publish(publish_topic_path, json.dumps(result).encode("utf-8"))
         logger.debug(f"Published result: {result}")
 
-        message.ack()
+        subscriber.acknowledge(subscription=subscription_path, ack_ids=[message.ack_id])
         logger.debug("Message acknowledged")
 
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
-        message.nack()
-        logger.debug("Message not acknowledged due to error")
-
-async def listen_to_pubsub():
-    subscriber.subscribe(subscription_path, callback=callback)
-    logger.info(f"Listening for messages on {subscription_path}...")
+        logger.error(f"Error processing message: {e}")
 
 @app.on_event("startup")
 async def startup_event():
-    asyncio.create_task(listen_to_pubsub())
+    asyncio.create_task(poll_pubsub())

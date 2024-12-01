@@ -1,6 +1,8 @@
 import tensorflow as tf
 from google.cloud import storage
 
+# LOCAL_MODEL_PATH = "models/model.h5"
+
 BUCKET_NAME = "models-storage-bucket"
 MODEL_PATH = "model.h5"
 LOCAL_MODEL_PATH = "/tmp/model.h5"
