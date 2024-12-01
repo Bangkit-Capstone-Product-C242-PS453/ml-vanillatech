@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+tensorflow
+numpy
+pydantic
+fastapi[standard]
+pillow
+google-cloud-pubsub
+google-cloud-storage
