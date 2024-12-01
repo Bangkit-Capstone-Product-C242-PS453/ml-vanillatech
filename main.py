@@ -6,7 +6,6 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse
 from google.cloud import pubsub_v1
 from services.predict import predict_image
-import asyncio
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -44,16 +43,18 @@ async def predict(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing the image: {str(e)}")
 
+@app.on_event("startup")
+async def start_polling():
+    app.add_task(poll_pubsub)
+
 async def poll_pubsub():
-    while True:
-        try:
-            response = subscriber.pull(subscription=subscription_path, max_messages=10, timeout=10)
-            if response.received_messages:
-                for msg in response.received_messages:
-                    process_message(msg)
-        except Exception as e:
-            logger.error(f"Error polling Pub/Sub: {e}")
-        await asyncio.sleep(5)
+    try:
+        response = subscriber.pull(subscription=subscription_path, max_messages=10, timeout=10)
+        if response.received_messages:
+            for msg in response.received_messages:
+                process_message(msg)
+    except Exception as e:
+        logger.error(f"Error polling Pub/Sub: {e}")
 
 def process_message(message):
     try:
@@ -80,7 +81,3 @@ def process_message(message):
 
     except Exception as e:
         logger.error(f"Error processing message: {e}")
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(poll_pubsub())
