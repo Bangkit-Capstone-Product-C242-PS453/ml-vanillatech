@@ -1,5 +1,4 @@
 import tensorflow as tf
-from io import BytesIO
 
 def preprocess_image(image_stream):
     """

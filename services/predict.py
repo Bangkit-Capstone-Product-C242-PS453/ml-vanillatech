@@ -1,4 +1,3 @@
-import numpy as np
 from models.model import model
 from utils.preprocess import preprocess_image
 
