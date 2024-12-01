@@ -13,10 +13,10 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up Git LFS
-      run: |
-        git lfs install
-        git lfs pull
+    # - name: Set up Git LFS
+    #   run: |
+    #     git lfs install
+    #     git lfs pull
 
     - name: Authenticate to GCP
       uses: google-github-actions/auth@v2
@@ -61,4 +61,4 @@ jobs:
           --platform managed \
           --allow-unauthenticated \
           --memory 2Gi \
-          --cpu 4
+          --cpu 2

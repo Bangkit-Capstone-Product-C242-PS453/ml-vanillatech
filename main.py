@@ -1,12 +1,12 @@
 import base64
 import json
-import uuid
 import io
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse
 from google.cloud import pubsub_v1
 from services.predict import predict_image
+import asyncio
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -23,13 +23,25 @@ publisher = pubsub_v1.PublisherClient()
 subscription_path = subscriber.subscription_path(PROJECT_ID, SUBSCRIPTION_NAME)
 publish_topic_path = publisher.topic_path(PROJECT_ID, PUBLISH_TOPIC_NAME)
 
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/health")
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
 
-@app.get("/")
-async def root():
-    return RedirectResponse(url="/health")
+@app.post("/predict")
+async def predict(file: UploadFile = File(...)):
+    try:
+        file_content = await file.read()
+        buffer = io.BytesIO(file_content)
+
+        predictions = predict_image(buffer)
+        return {"predictions": predictions}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing the image: {str(e)}")
 
 def callback(message: pubsub_v1.subscriber.message.Message):
     try:
@@ -59,13 +71,10 @@ def callback(message: pubsub_v1.subscriber.message.Message):
         message.nack()
         logger.debug("Message not acknowledged due to error")
 
-def listen_to_pubsub():
+async def listen_to_pubsub():
     subscriber.subscribe(subscription_path, callback=callback)
     logger.info(f"Listening for messages on {subscription_path}...")
 
-if __name__ == "__main__":
-    import threading
-    threading.Thread(target=listen_to_pubsub, daemon=True).start()
-
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(listen_to_pubsub())

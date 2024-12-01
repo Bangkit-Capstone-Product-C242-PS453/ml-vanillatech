@@ -1,36 +1,38 @@
-# Gunakan image dasar Python
+# Use Python base image
 FROM python:3.10-slim
 
-# Install Git dan Git LFS
-RUN apt-get update && apt-get install -y git-lfs
+# Install Git and Git LFS
+RUN apt-get update && apt-get install -y \
+    git \
+    git-lfs \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Inisialisasi Git LFS
-RUN git lfs install
+# Initialize Git LFS
+# RUN git lfs install
 
-# Set environment variables to optimize Python behavior
+# Set environment variables for Python optimization
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Install system dependencies required by TensorFlow and image processing
-RUN apt-get install -y --no-install-recommends \
-    libglib2.0-0 libsm6 libxext6 libxrender-dev && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Set the working directory inside the container
+# Set working directory inside the container
 WORKDIR /app
 
-# Copy the requirements file and install dependencies
+# Copy requirements.txt and install dependencies
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Salin seluruh kode aplikasi ke dalam container
+# Copy the entire application code into the container
 COPY . /app
 
-# Unduh file LFS jika perlu
-RUN git lfs pull
+# Pull LFS files if necessary
+# RUN git lfs pull
 
-# Expose port 8080
+# Expose port 8080 (default for Cloud Run)
 EXPOSE 8080
 
 # Default command to run the application
-CMD ["python", "main.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
