@@ -5,6 +5,5 @@ numpy
 pydantic
 fastapi[standard]
 pillow
-requests
-python-dotenv
+google-cloud-pubsub
 google-cloud-storage

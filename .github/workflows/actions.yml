@@ -47,14 +47,40 @@ jobs:
       with:
         project_id: capstone-c242-ps453
 
-    - name: Deploy to Cloud Run
+    # - name: Deploy to Cloud Run
+    #   run: |
+    #     IMAGE_NAME=asia-southeast2-docker.pkg.dev/capstone-c242-ps453/ml-vanillatech-repo/ml-vanillatech
+    #     gcloud run deploy ml-vanillatech \
+    #       --image $IMAGE_NAME \
+    #       --set-env-vars ${{ secrets.ENV }} \
+    #       --region asia-southeast2 \
+    #       --platform managed \
+    #       --allow-unauthenticated \
+    #       --memory 2Gi \
+    #       --cpu 1
+
+    # - name: Deploy to GCE
+    #   run: |
+    #     IMAGE_NAME=asia-southeast2-docker.pkg.dev/capstone-c242-ps453/ml-vanillatech-repo/ml-vanillatech:latest
+    #     INSTANCE_NAME=ml-vanillatech-instance
+    #     ZONE=asia-southeast2-a
+
+    #     gcloud compute instances create-with-container $INSTANCE_NAME \
+    #         --zone=$ZONE \
+    #         --container-image=$IMAGE_NAME \
+    #         --container-restart-policy=always \
+    #         --tags=http-server,https-server \
+    #         --machine-type=e2-small
+
+    - name: Deploy to GCE
       run: |
-        IMAGE_NAME=asia-southeast2-docker.pkg.dev/capstone-c242-ps453/ml-vanillatech-repo/ml-vanillatech
-        gcloud run deploy ml-vanillatech \
-          --image $IMAGE_NAME \
-          --set-env-vars ${{ secrets.ENV }} \
-          --region asia-southeast2 \
-          --platform managed \
-          --allow-unauthenticated \
-          --memory 2Gi \
-          --cpu 1
+        IMAGE_NAME=asia-southeast2-docker.pkg.dev/capstone-c242-ps453/ml-vanillatech-repo/ml-vanillatech:latest
+        INSTANCE_NAME=ml-vanillatech-instance
+        ZONE=asia-southeast2-a
+
+        gcloud compute instances stop $INSTANCE_NAME --zone=$ZONE
+        gcloud compute instances update-container $INSTANCE_NAME \
+            --zone=$ZONE \
+            --container-image=$IMAGE_NAME \
+            --container-restart-policy=always
+        gcloud compute instances start $INSTANCE_NAME --zone=$ZONE
