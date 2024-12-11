@@ -1,7 +1,7 @@
 from models.model import model
 from utils.preprocess import preprocess_image
 
-CLASS_NAMES = ['Akar Busuk', 'Busuk Batang', 'Busuk Daun', 'Hawar Daun dan Bunga', 'Powder Mildew', 'Sehat']
+CLASS_NAMES = ['Akar Busuk', 'Busuk Batang', 'Busuk Daun', 'Hawar Daun dan Bunga', 'Powdery Mildew', 'Sehat']
 
 def predict_image(image_stream):
     """

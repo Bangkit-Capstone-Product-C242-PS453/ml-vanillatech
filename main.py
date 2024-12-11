@@ -2,11 +2,12 @@ import base64
 import json
 import io
 import logging
+import asyncio
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse
 from google.cloud import pubsub_v1
 from services.predict import predict_image
-import asyncio
+from models.model import reload_model
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -31,6 +32,16 @@ async def root():
 async def health_check():
     return {"status": "ok"}
 
+@app.post("/reload")
+async def reload_model_endpoint():
+    try:
+        message = reload_model()
+        logger.info(message)
+        return {"message": message}
+    except Exception as e:
+        logger.error(f"Error reloading model: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error reloading model: {str(e)}")
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     try:
@@ -44,35 +55,6 @@ async def predict(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing the image: {str(e)}")
 
-@app.post("/predict-trigger")
-async def predict(message: any):
-    try:
-        data = json.loads(message.data.decode("utf-8"))
-        image_data = base64.b64decode(data['image'])
-        timestamp = data['timestamp']
-
-        logger.debug(f"Received image with timestamp: {timestamp}")
-
-        image_stream = io.BytesIO(image_data)
-        predictions = predict_image(image_stream)
-
-        result = {
-            "id_process": message.message_id,
-            "result": predictions,
-            "timestamp": timestamp
-        }
-
-        publisher.publish(publish_topic_path, json.dumps(result).encode("utf-8"))
-        logger.debug(f"Published result: {result}")
-
-        message.ack()
-        logger.debug("Message acknowledged")
-
-    except Exception as e:
-        logger.error(f"Error: {str(e)}")
-        message.nack()
-        logger.debug("Message not acknowledged due to error")
-
 def callback(message: pubsub_v1.subscriber.message.Message):
     try:
         data = json.loads(message.data.decode("utf-8"))
@@ -82,7 +64,10 @@ def callback(message: pubsub_v1.subscriber.message.Message):
         logger.debug(f"Received image with timestamp: {timestamp}")
 
         image_stream = io.BytesIO(image_data)
-        predictions = predict_image(image_stream)
+        try:
+            predictions = predict_image(image_stream)
+        except Exception as e:
+            message.nack()
 
         result = {
             "id_process": message.message_id,
@@ -97,9 +82,7 @@ def callback(message: pubsub_v1.subscriber.message.Message):
         logger.debug("Message acknowledged")
 
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
         message.nack()
-        logger.debug("Message not acknowledged due to error")
 
 async def listen_to_pubsub():
     subscriber.subscribe(subscription_path, callback=callback)
