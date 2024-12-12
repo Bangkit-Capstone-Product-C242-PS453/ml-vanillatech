@@ -28,7 +28,7 @@ jobs:
 
     - name: Build and push Docker image to Artifact Registry
       run: |
-        IMAGE_NAME=asia-southeast2-docker.pkg.dev/capstone-c242-ps453/ml-vanillatech-repo/ml-vanillatech
+        IMAGE_NAME=asia-southeast2-docker.pkg.dev/capstone-c242-ps453/ml-vanillatech-repo/ml-vanillatech:latest
         docker build --no-cache -t $IMAGE_NAME .
         docker push $IMAGE_NAME
 

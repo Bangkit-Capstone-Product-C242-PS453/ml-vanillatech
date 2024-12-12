@@ -6,7 +6,7 @@ import asyncio
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse
 from google.cloud import pubsub_v1
-from services.predict import predict_image
+from services.predict import prediction
 from models.model import reload_model
 
 logging.basicConfig(level=logging.DEBUG)
@@ -48,7 +48,7 @@ async def predict(file: UploadFile = File(...)):
         file_content = await file.read()
         buffer = io.BytesIO(file_content)
 
-        predictions = predict_image(buffer)
+        predictions = prediction(buffer)
         publisher.publish(publish_topic_path, json.dumps(predictions).encode("utf-8"))
         return {"predictions": predictions}
 
@@ -65,7 +65,7 @@ def callback(message: pubsub_v1.subscriber.message.Message):
 
         image_stream = io.BytesIO(image_data)
         try:
-            predictions = predict_image(image_stream)
+            predictions = prediction(image_stream)
         except Exception as e:
             message.nack()
 
