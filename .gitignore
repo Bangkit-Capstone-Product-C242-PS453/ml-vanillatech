@@ -3,3 +3,4 @@ venv
 .vscode
 __pycache__
 env.txt
+model.h5
